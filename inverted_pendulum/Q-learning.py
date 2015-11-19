@@ -1,5 +1,4 @@
 import numpy as np
-#from plot import Penplot
 
 ##############################################
 cart_mass = 0.5
@@ -21,7 +20,7 @@ eighteen_degrees = 0.3141592653589793
 fifty_degrees = 0.87266
 
 alpha = 0.5
-epsilon = 0.1
+epsilon = 0.01
 gamma = 0.5
 ##############################################
 
@@ -120,6 +119,15 @@ class Pendulum(object):
         else:
             return 1.0
 
+    def _q_learning(self, states, action, reward, new_states):
+        x, x_dot, theta, theta_dot = self._threshold(new_states)
+        newQ = max(self.Q[0, x, x_dot, theta, theta_dot], self.Q[1, x, x_dot, theta, theta_dot])
+
+        x, x_dot, theta, theta_dot = self._threshold(states)
+        oldQ = self.Q[action, x, x_dot, theta, theta_dot]
+
+        self.Q[action, x, x_dot, theta, theta_dot] += alpha * (reward - oldQ + gamma * newQ)
+
     def _step(self):
         states = self.s
         policy = self._e_greedy(states)
@@ -133,16 +141,13 @@ class Pendulum(object):
 
         return False if reward < 1.0 else True
 
-    def _q_learning(self, states, action, reward, new_states):
-        x, x_dot, theta, theta_dot = self._threshold(new_states)
-        newQ = max(self.Q[0, x, x_dot, theta, theta_dot], self.Q[1, x, x_dot, theta, theta_dot])
+    def _print_result(self, episode, max_step, total_steps):
+        print "-" * 30
+        print "Episode:\t%d ~ %d" % (episode-999, episode)
+        print "Average:\t%d (%.2lfs)" % (total_steps / 1000, (total_steps / 1000) * tau)
+        print "Max step:\t%d (%.2lfs)" % (max_step, max_step * tau)
 
-        x, x_dot, theta, theta_dot = self._threshold(states)
-        oldQ = self.Q[action, x, x_dot, theta, theta_dot]
-
-        self.Q[action, x, x_dot, theta, theta_dot] += alpha * (reward - oldQ + gamma * newQ)
-
-    def process(self, max_episode=1000, plot=False):
+    def process(self, max_episode=1000):
         total_steps = 0
         max_step = 0
 
@@ -150,20 +155,17 @@ class Pendulum(object):
             self.s = (0, 0, 0, 0)
             for step in np.arange(0, 100000):
                 if not self._step():
-                    print "Episode %d: %dsteps" % (episode, step)
-                    total_steps += step
-                    max_step = max(max_step, step)
+                    if not episode % 1000 and episode >= 1000:
+                        self._print_result(episode, max_step, total_steps)
+                        total_steps = 0
+                        max_step = 0
+                    else:
+                        total_steps += step
+                        max_step = max(max_step, step)
                     break
             else:
                 print "episode %d is complite %d steps" % (episode, 100000)
 
-        print "Episode:\t%d" % max_episode
-        print "Average:\t%d (%.2lfs)" % (total_steps / max_episode, (total_steps / max_episode) * tau)
-        print "Max step:\t%d (%.2lfs)" % (max_step, max_step * tau)
-
-        if plot:
-            pass
-
 if __name__ == '__main__':
     pendulum = Pendulum()
-    pendulum.process(10000)
+    pendulum.process(100000)
