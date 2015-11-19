@@ -3,12 +3,12 @@ import numpy as np
 ##############################################
 cart_mass = 0.5
 pole_mass = 0.1
-pole_length = 0.25
+pole_length = 0.3
 pole_masslength = pole_mass * pole_length
 total_mass = cart_mass + pole_mass
 
 gravity = 9.8
-force_mag = 4.5
+force_mag = 10.0
 tau = 0.02
 
 four_thirds = 1.3333333333333
@@ -153,7 +153,7 @@ class Pendulum(object):
 
         for episode in np.arange(0, max_episode):
             self.s = (0, 0, 0, 0)
-            for step in np.arange(0, 100000):
+            for step in np.arange(0, 1000000):
                 if not self._step():
                     if not episode % 1000 and episode >= 1000:
                         self._print_result(episode, max_step, total_steps)
@@ -164,7 +164,7 @@ class Pendulum(object):
                         max_step = max(max_step, step)
                     break
             else:
-                print "episode %d is complite %d steps" % (episode, 100000)
+                print "episode %d is complite %d steps" % (episode, 1000000)
 
 if __name__ == '__main__':
     pendulum = Pendulum()
