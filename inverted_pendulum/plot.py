@@ -11,9 +11,9 @@ class Penplot(object):
         self.x_dot = [state[1] for state in states]
         self.theta = [state[2] for state in states]
         self.theta_dot = [state[3] for state in states]
-        self.process()
+        self._process()
 
-    def plot(self, data):
+    def _plot(self, data):
         x, theta, frame = data
         self.time_text.set_text('time:%.2fs\nstep:%d' % (frame*0.02, frame))
         
@@ -21,14 +21,14 @@ class Penplot(object):
         theta_x = x + math.sin(theta) * 0.25
         theta_y = y + math.cos(theta) * 0.25
         
-        self.car.set_data(x, y/2.0)
+        self.car.set_data(x, y / 2.0)
         self.line.set_data((x, theta_x), (y, theta_y))
 
-    def gen(self):
+    def _gen(self):
         for frame in xrange(len(self.x)):
             yield self.x[frame], self.theta[frame], frame
 
-    def process(self):
+    def _process(self):
         if self.anime:
             fig = plt.figure(figsize=(20, 4.5))
             ax = fig.add_subplot(1, 1, 1)
@@ -40,7 +40,7 @@ class Penplot(object):
             self.car, = ax.plot([], [], 's', ms=15)
             self.line, = ax.plot([], [], 'b-', lw=2)
             
-            ani = animation.FuncAnimation(fig, self.plot, self.gen, interval=1, repeat_delay=3000, repeat=True)
+            ani = animation.FuncAnimation(fig, self._plot, self._gen, interval=1, repeat_delay=3000, repeat=True)
             
             try:
                 plt.show()
