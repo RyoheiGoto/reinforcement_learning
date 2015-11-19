@@ -56,17 +56,17 @@ class Pendulum(object):
         
         for action in quantity:
             if action == max(quantity):
-                policy.append(1. - epsilon + epsilon / act)
+                policy.append(1.0 - epsilon + epsilon / act)
             else:
                 policy.append(epsilon / act)
         
-        if sum(policy) == 1.:
+        if sum(policy) == 1.0:
             return policy
         else:
             return [1.0 / act for i in xrange(act)]
 
     def decide_action(self, policy):
-        prob = 0.
+        prob = 0.0
         for act in xrange(len(policy)):
             prob += policy[act]
             if np.random.random() < prob:
@@ -76,9 +76,9 @@ class Pendulum(object):
         x, x_dot, theta, theta_dot = [np.fabs(val) for val in state]
         
         if x > 2.4 or theta > twelve_degrees:
-            return 0.
+            return 0.0
         else:
-            return 1.
+            return 1.0
 
     def threshold(self, state):
         x, x_dot, theta, theta_dot = state
@@ -102,7 +102,7 @@ class Pendulum(object):
             s3 = 0
         elif theta < -one_degrees:
             s3 = 1
-        elif theta < 0.:
+        elif theta < 0.0:
             s3 = 2
         elif theta < one_degrees:
             s3 = 3
@@ -150,10 +150,10 @@ class Pendulum(object):
                 self.Q[action, x, x_dot, theta, theta_dot] += q
                 num[action, x, x_dot, theta, theta_dot] += 1.0
         
-        num[num == 0.] = 1.0
+        num[num == 0.0] = 1.0
         self.Q /= num
 
-    def process(self, max_episode=1000, min_step=0, update=True, plot=False, save=None):
+    def process(self, max_episode=1000, update=True, plot=False, save=None):
         self.D = []
         total_step = 0
         max_step = 0
@@ -164,12 +164,11 @@ class Pendulum(object):
             self.s = (0, 0, 0, 0)
             for step in np.arange(0, 100000):
                 if not self.step():
+                    self.D.append(self.d)
                     total_step += step
                     max_step = max(max_step, step)
                     if max_step is step:
                         state_list = self.d
-                    if step > min_step:
-                        self.D.append(self.d)
                     break
             else:
                 print "episode %d is complite %d steps" % (episode, 100000)
@@ -180,19 +179,19 @@ class Pendulum(object):
         
         if plot and state_list:
             state = [d[0] for d in state_list]
-            Penplot(state, anime=True, fig=False)
+            Penplot(state, anime=True, fig=True)
         if update:
             self.mc()
-        if save:
+        if save and state_list:
             q, s = save.split(" ")
-            state = [d[0] for d in state_list]
+            states = [d[0] for d in state_list]
             np.save(q, self.Q)
-            np.save(s, state)
+            np.save(s, states)
         print "-" * 30
 
 if __name__ == '__main__':
     pendulum = Pendulum()
-    pendulum.process(10000, 0, plot=True)
-    pendulum.process(10000, 0, plot=True)
-    pendulum.process(10000, 0, update=False, plot=True)
+    pendulum.process(10000, plot=True)
+    pendulum.process(10000, plot=True)
+    pendulum.process(10000, update=False, plot=True, save="Q.npy states.npy")
 
