@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from plot import Penplot
 
@@ -30,16 +29,20 @@ class Pendulum(object):
         print "-" * 30
         np.random.seed()
         self.Q = np.zeros([2, 3, 3, 6, 3])
+        self.D = None
+        self.d = None
+        self.s = None
 
-    def update_status(self, old_state, action):
-        x, x_dot, theta, theta_dot = old_state
+    def _update_status(self, old_states, action):
+        x, x_dot, theta, theta_dot = old_states
         
         force = force_mag if action > 0 else -force_mag
         cos_theta = np.cos(theta)
         sin_theta = np.sin(theta)
         
         temp = (force + pole_masslength * theta_dot**2 * sin_theta) / total_mass
-        theta_acc = (gravity * sin_theta - cos_theta * temp) / (pole_length * (four_thirds - pole_mass * cos_theta**2 / total_mass))
+        theta_acc = (gravity * sin_theta - cos_theta * temp) /\
+                    (pole_length * (four_thirds - pole_mass * cos_theta**2 / total_mass))
         x_acc = temp - pole_masslength * theta_acc * cos_theta / total_mass
         
         x += tau * x_dot
@@ -49,9 +52,9 @@ class Pendulum(object):
         
         return x, x_dot, theta, theta_dot
 
-    def e_greedy(self, state, act=2):
+    def _e_greedy(self, states, act=2):
         policy = []
-        x, x_dot, theta, theta_dot = self.threshold(state)
+        x, x_dot, theta, theta_dot = self._threshold(states)
         quantity = [self.Q[action, x, x_dot, theta, theta_dot] for action in xrange(act)]
         
         for action in quantity:
@@ -63,26 +66,25 @@ class Pendulum(object):
         if sum(policy) == 1.0:
             return policy
         else:
-            return [1.0 / act for i in xrange(act)]
+            return map(lambda n: 1.0 / act, policy)
 
-    def decide_action(self, policy):
+    def _decide_action(self, policy):
         prob = 0.0
-        for act in xrange(len(policy)):
-            prob += policy[act]
+        for action in xrange(len(policy)):
+            prob += policy[action]
             if np.random.random() < prob:
-                return act
+                return action
     
-    def get_reward(self, state):
-        x, x_dot, theta, theta_dot = [np.fabs(val) for val in state]
+    def _get_reward(self, states):
+        x, x_dot, theta, theta_dot = [np.fabs(state) for state in states]
         
         if x > 2.4 or theta > twelve_degrees:
             return 0.0
         else:
             return 1.0
 
-    def threshold(self, state):
-        x, x_dot, theta, theta_dot = state
-        s1 = s2 = s3 = s4 = 0
+    def _threshold(self, states):
+        x, x_dot, theta, theta_dot = states
         
         if x < -0.8:
             s1 = 0
@@ -120,33 +122,33 @@ class Pendulum(object):
         
         return s1, s2, s3, s4
 
-    def step(self):
-        state = self.s
-        policy = self.e_greedy(state)
-        action = self.decide_action(policy)
+    def _step(self):
+        states = self.s
+        policy = self._e_greedy(states)
+        action = self._decide_action(policy)
         
-        new_state = self.update_status(state, action)
-        reward = self.get_reward(new_state)
+        new_states = self._update_status(states, action)
+        reward = self._get_reward(new_states)
         
-        self.s = new_state
-        self.d.append((state, action, reward, new_state))
+        self.s = new_states
+        self.d.append((states, action, reward, new_states))
         
         return False if reward < 1.0 else True
 
-    def mc(self):
-        self.Q = np.zeros([2, 3, 3, 6, 3])
-        num = np.zeros([2, 3, 3, 6, 3])
+    def _mc(self):
+        self.Q = np.zeros_like(self.Q)
+        num = np.zeros_like(self.Q)
         
         for m in self.D:
             for t in xrange(len(m)):
-                state, action, reward, new_state = m[t]
-                x, x_dot, theta, theta_dot = self.threshold(state)
                 d = m[t:]
                 q = 0.0
-                
+
                 for current in xrange(len(d)):
                     q += gamma ** current * d[current][2]
-                    
+
+                states, action, reward, new_states = m[t]
+                x, x_dot, theta, theta_dot = self._threshold(states)
                 self.Q[action, x, x_dot, theta, theta_dot] += q
                 num[action, x, x_dot, theta, theta_dot] += 1.0
         
@@ -155,7 +157,7 @@ class Pendulum(object):
 
     def process(self, max_episode=1000, update=True, plot=False, save=None):
         self.D = []
-        total_step = 0
+        total_steps = 0
         max_step = 0
         state_list = None
         
@@ -163,9 +165,9 @@ class Pendulum(object):
             self.d = []
             self.s = (0, 0, 0, 0)
             for step in np.arange(0, 100000):
-                if not self.step():
+                if not self._step():
                     self.D.append(self.d)
-                    total_step += step
+                    total_steps += step
                     max_step = max(max_step, step)
                     if max_step is step:
                         state_list = self.d
@@ -174,14 +176,14 @@ class Pendulum(object):
                 print "episode %d is complite %d steps" % (episode, 100000)
         
         print "Episode:\t%d" % max_episode
-        print "Average:\t%d (%.2lfs)" % (total_step / max_episode, (total_step / max_episode) * tau)
+        print "Average:\t%d (%.2lfs)" % (total_steps / max_episode, (total_steps / max_episode) * tau)
         print "Max step:\t%d (%.2lfs)" % (max_step, max_step * tau)
         
         if plot and state_list:
             state = [d[0] for d in state_list]
             Penplot(state, anime=True, fig=True)
         if update:
-            self.mc()
+            self._mc()
         if save and state_list:
             q, s = save.split(" ")
             states = [d[0] for d in state_list]

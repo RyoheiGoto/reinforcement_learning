@@ -1,7 +1,6 @@
 import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import numpy as np
 
 class Penplot(object):
     def __init__(self, states, anime=False, fig=False):
@@ -41,10 +40,10 @@ class Penplot(object):
             self.line, = ax.plot([], [], 'b-', lw=2)
             
             ani = animation.FuncAnimation(fig, self._plot, self._gen, interval=1, repeat_delay=3000, repeat=True)
-            
+
             try:
                 plt.show()
-            except:
+            except AttributeError:
                 pass
         
         if self.fig:
@@ -61,9 +60,5 @@ class Penplot(object):
             plt.plot(steps, self.x_dot, label="x_dot")
             plt.plot(steps, self.theta_dot, label="theta_dot")
             plt.legend(loc='upper left')
-            
-            try:
-                plt.show()
-            except:
-                pass
 
+            plt.show()
