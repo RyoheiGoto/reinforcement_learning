@@ -1,4 +1,5 @@
 import numpy as np
+from plot import Penplot
 
 ##############################################
 cart_mass = 0.5
@@ -16,7 +17,7 @@ four_thirds = 1.3333333333333
 one_degrees = 0.0174532
 six_degrees = 0.1047192
 twelve_degrees = 0.2094384
-eighteen_degrees = 0.3141592653589793
+eighteen_degrees = 0.3141592
 fifty_degrees = 0.87266
 
 alpha = 0.5
@@ -29,6 +30,7 @@ class Pendulum(object):
         np.random.seed()
         self.Q = np.zeros([2, 3, 3, 6, 3])
         self.s = None
+        self.d = None
 
     def _update_status(self, old_states, action):
         x, x_dot, theta, theta_dot = old_states
@@ -150,21 +152,30 @@ class Pendulum(object):
     def process(self, max_episode=1000):
         total_steps = 0
         max_step = 0
+        states = []
 
         for episode in np.arange(0, max_episode):
             self.s = (0, 0, 0, 0)
             for step in np.arange(0, 1000000):
+                states.append(self.s)
                 if not self._step():
+                    if max_step < step:
+                        self.d = states
+                    states = []
+
                     if not episode % 1000 and episode >= 1000:
                         self._print_result(episode, max_step, total_steps)
-                        total_steps = 0
-                        max_step = 0
+                        Penplot(self.d, anime=True, fig=True)
+                        total_steps = max_step = 0
+                        states = self.d = []
                     else:
                         total_steps += step
                         max_step = max(max_step, step)
+
                     break
             else:
                 print "episode %d is complite %d steps" % (episode, 1000000)
+                return 0
 
 if __name__ == '__main__':
     pendulum = Pendulum()
