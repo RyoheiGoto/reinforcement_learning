@@ -1,41 +1,44 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import csv
 
-FIELD_WIDTH = 330
+FIELD_WIDTH = 396
 FIELD_HIGHT = 180
 GOAL_LENGTH = 180
 
-THRESHOLD = 30
-FIELD_WIDTH_THRESHOLD = FIELD_WIDTH / THRESHOLD + 1
-FIELD_HIGHT_THRESHOLD = FIELD_HIGHT / THRESHOLD + 1
+THRESHOLD = 36
+FIELD_WIDTH_THRESHOLD_NUM = FIELD_WIDTH / THRESHOLD + 1
+FIELD_WIDTH_THRESHOLD = [Y * THRESHOLD - FIELD_WIDTH / 2.0 for Y in xrange(FIELD_WIDTH_THRESHOLD_NUM)]
+FIELD_HIGHT_THRESHOLD_NUM = FIELD_HIGHT / THRESHOLD + 1
+FIELD_HIGHT_THRESHOLD = [X * THRESHOLD for X in xrange(FIELD_HIGHT_THRESHOLD_NUM)]
 
-STATE_NUM = 2
-BALL_VELO_THRESHOLD = 5
-STAND, FALL, WAKEUP = range(3)
+BALL_VELO_X_THRESHOLD = [X * 100.0 for X in [-1.0, -0.8, -0.6, -0.4, -0.2, 0.0]]
+BALL_VELO_X_THRESHOLD_NUM = len(BALL_VELO_X_THRESHOLD) + 1
+BALL_VELO_Y_THRESHOLD = [Y * 100.0 / 5.0 for Y in [-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0]]
+BALL_VELO_Y_THRESHOLD_NUM = len(BALL_VELO_Y_THRESHOLD) + 1
 
-TAU = 0.1
-EPSILON = 0.01
+ROBOT_STATES = 3
+STAND, FALL_LEFT, FALL_RIGHT = range(ROBOT_STATES)
+
+TAU = 0.2
+EPSILON = 0.1
 ALPHA = 0.5
 GAMMA = 0.5
-ACTION_TIME = 5
+
+FALL_TIME = 3.0
 
 class Soccer(object):
     def __init__(self):
         np.random.seed()
-        self.Q = np.zeros([STATE_NUM, FIELD_HIGHT_THRESHOLD, FIELD_WIDTH_THRESHOLD, BALL_VELO_THRESHOLD, BALL_VELO_THRESHOLD])
-        #q [action, x, y, dx, dy]
-        self.do_learing = False
+        self.Q = np.zeros([ROBOT_STATES, FIELD_HIGHT_THRESHOLD_NUM, FIELD_WIDTH_THRESHOLD_NUM, BALL_VELO_X_THRESHOLD_NUM, BALL_VELO_Y_THRESHOLD_NUM])
+        #Q[robot state, ball x, ball y, ball dx, ball dy]
 
-        self.robot_state = None #state
-        self.action_count = None
+        self.robot_state = None
+        self.fall_count = None
 
-        self.ball_states = None #[x, y, x_dot, y_dot]
-        self.ball_x = None
-        self.ball_y = None
-        self.ball_dx = None
-        self.ball_dy = None
+        self.ball_states = None #[x, y, dx, dy]
 
-        self.reward = None
+        self.result = None
 
     def step(self):
         ball_states = self.ball_states
@@ -44,93 +47,104 @@ class Soccer(object):
         self.decide_action(ball_states, robot_state)
 
         self.update_status()
-        new_ball_states = [self.ball_x, self.ball_y, self.ball_dx, self.ball_dy]
+        new_ball_states = self.ball_states
         new_robot_states = self.robot_state
-        reward = self.get_reward(new_ball_states, new_robot_states)
 
-        if self.do_learing:
-            self.q_learning(ball_states, new_ball_states, new_robot_states, reward)
+        reward, result = self.get_reward(new_ball_states, new_robot_states)
 
-        #return False if reward != 0 else True
-        return False if self.ball_x < -10 else True
+        self.q_learning(ball_states, new_ball_states, new_robot_states, reward)
+
+        if not result:
+            self.result = reward
+            return False
+        else:
+            return True
 
     def decide_action(self, ball_states, robot_state):
-        if robot_state == FALL:
-            self.do_learing = True
-            if self.action_count > 0:
-                self.action_count -= 1
-            else:
-                self.do_learing = False
-                self.action_count = ACTION_TIME
-                self.robot_state = WAKEUP
-                return
-        elif robot_state == WAKEUP:
-            self.do_learing = False
-            if self.action_count > 0:
-                self.action_count -= 1
-            else:
-                self.action_count = None
-                self.robot_state = STAND
-                return
+        if robot_state == (FALL_LEFT or FALL_RIGHT):
+            self.fall_count -= 1
         else:
-            self.do_learing = True
             policy = self.e_greedy(ball_states)
             prob = 0.0
-            for action, policy in zip(xrange(STATE_NUM), policy):
+            for action, policy in zip(xrange(ROBOT_STATES), policy):
                 prob += policy
                 if np.random.random() < prob:
                     self.robot_state = action
-                    if action == FALL:
-                        self.action_count = ACTION_TIME
-                    return
+                    if action == (FALL_LEFT or FALL_RIGHT):
+                        self.fall_count = FALL_TIME
+                    break
             else:
-                self.robot_state = STATE_NUM - 1
-                self.action_count = ACTION_TIME
-                return
+                self.robot_state = STAND
 
     def e_greedy(self, ball_states):
         policy = []
-        x, y, dx, dy = self.threshold(ball_states)
-        quantity = [self.Q[action, x, y, dx, dy] for action in xrange(STATE_NUM)]
+        _x, _y, _dx, _dy = self.threshold(ball_states)
+        quantity = [self.Q[action, _x, _y, _dx, _dy] for action in xrange(ROBOT_STATES)]
 
-        for action in quantity:
-            if action == max(quantity):
-                policy.append(1.0 - EPSILON + EPSILON / STATE_NUM)
-            else:
-                policy.append(EPSILON / STATE_NUM)
+        if sum(quantity) == 0:
+            return map(lambda n: 1.0 / ROBOT_STATES, quantity)
+        else:
+            for action in xrange(len(quantity)):
+                if action == quantity.index(max(quantity)):
+                    policy.append(1.0 - EPSILON + EPSILON / ROBOT_STATES)
+                else:
+                    policy.append(EPSILON / ROBOT_STATES)
 
         if sum(policy) == 1.0:
             return policy
         else:
-            return map(lambda n: 1.0 / STATE_NUM, policy)
+            return map(lambda n: 1.0 / ROBOT_STATES, policy)
 
     def update_status(self):
-        self.ball_x += self.ball_dx * TAU
-        self.ball_y += self.ball_dy * TAU
+        ball_x, ball_y, ball_dx, ball_dy = self.ball_states
+
+        ball_x += ball_dx * TAU
+        ball_y += ball_dy * TAU
+
+        self.ball_states = [ball_x, ball_y, ball_dx, ball_dy]
 
     def get_reward(self, ball_staes, robot_state):
-        x, y, dx, dy = ball_staes
+        _x, _y, _dx, _dy = self.threshold(ball_staes)
+        reward = 0.0
+        result = True
 
-        if robot_state == FALL and self.action_count == 1 and x > 10:
-            reward = -1.0
-        elif x < 0 and np.fabs(y) < GOAL_LENGTH / 2:
-            if robot_state == FALL:
-                reward = 1.0
-            elif robot_state == STAND:
-                reward = -1.0
+        if robot_state == STAND:
+            if _x == 1 and _y == 6: #ball clear
+                reward = 5.0
+                result = False
             else:
-                reward = -1.0
-        elif x < 0 and np.fabs(y) > GOAL_LENGTH / 2:
-            reward = 1.0
-        else:
-            reward = 0.0
-        self.reward = reward
+                reward = 1.0
+        elif robot_state == FALL_LEFT:
+            if _x == 1 and (4 <= _y <= 5): #ball clear
+                reward = 5.0
+                result = False
+            elif self.fall_count <= 0:
+                reward = -5.0
+                result = False
+            else:
+                reward = -5.0
+        elif robot_state == FALL_RIGHT:
+            if _x == 1 and (7 <= _y <= 8): #ball clear
+                reward = 1.0
+                result = False
+            elif self.fall_count <= 0:
+                reward = -5.0
+                result = False
+            else:
+                reward = -5.0
 
-        return reward
+        if _x == 0 and (4 <= _y <= 8): #ball in goal
+            reward = -10.0
+            result = False
+        elif (_x == 0 or _x == 6) and (_y < 4 or _y > 8): #ball out of line
+            reward = 1.0
+            result = False
+
+        return reward, result
 
     def q_learning(self, ball_states, new_ball_states, new_robot_state, reward):
         x, y, dx, dy = self.threshold(new_ball_states)
-        newQ = max([self.Q[action, x, y, dx, dy] for action in xrange(STATE_NUM)])
+        newQ = max([self.Q[action, x, y, dx, dy] for action in xrange(ROBOT_STATES)])
 
         x, y, dx, dy = self.threshold(ball_states)
         oldQ = self.Q[new_robot_state, x, y, dx, dy]
@@ -138,72 +152,89 @@ class Soccer(object):
         self.Q[new_robot_state, x, y, dx, dy] += ALPHA * (reward - oldQ + GAMMA * newQ)
 
     def threshold(self, state): #ball state threshold
-        x, y, x_dot, y_dot = state
+        x, y, dx, dy = state
 
         #threshold x
-        field_x = [i * 30 for i in xrange(FIELD_HIGHT_THRESHOLD)]
-        for fx, s in zip(field_x, xrange(FIELD_HIGHT_THRESHOLD)):
-            if x < fx:
-                s1 = s
+        for field, num in zip(FIELD_HIGHT_THRESHOLD, xrange(FIELD_HIGHT_THRESHOLD_NUM)):
+            if x < field:
+                th_x = num
                 break
         else:
-            s1 = len(field_x) - 1
+            th_x = FIELD_HIGHT_THRESHOLD_NUM - 1
 
         #threshold y
-        field_y = [i * 30 - FIELD_WIDTH / 2 for i in xrange(FIELD_WIDTH_THRESHOLD)]
-        for fy, s in zip(field_y, xrange(FIELD_WIDTH_THRESHOLD)):
-            if y < fy:
-                s2 = s
+        for field, num in zip(FIELD_WIDTH_THRESHOLD, xrange(FIELD_WIDTH_THRESHOLD_NUM)):
+            if y < field:
+                th_y = num
                 break
         else:
-            s2 = len(field_y) - 1
+            th_y = FIELD_WIDTH_THRESHOLD_NUM - 1
 
         #threshold x_dot
-        field_x_dot = [0.2 * i for i in xrange(BALL_VELO_THRESHOLD)]
-        for fxd, s in zip(field_x_dot, xrange(BALL_VELO_THRESHOLD)):
-            if x_dot < fxd:
-                s3 = s
+        for velo, num in zip(BALL_VELO_X_THRESHOLD, xrange(BALL_VELO_X_THRESHOLD_NUM)):
+            if dx < velo:
+                th_dx = num
                 break
         else:
-            s3 = len(field_x_dot) - 1
+            th_dx = BALL_VELO_X_THRESHOLD_NUM - 1
 
         #threshold y_dot
-        field_y_dot = [0.2 * i for i in xrange(BALL_VELO_THRESHOLD)]
-        for fyd, s in zip(field_y_dot, xrange(BALL_VELO_THRESHOLD)):
-            if y_dot < fyd:
-                s4 = s
+        for velo, num in zip(BALL_VELO_Y_THRESHOLD, xrange(BALL_VELO_Y_THRESHOLD_NUM)):
+            if dy < velo:
+                th_dy = num
                 break
         else:
-            s4 = len(field_y_dot) - 1
+            th_dy = BALL_VELO_Y_THRESHOLD_NUM - 1
 
-        return s1, s2, s3, s4
+        return th_x, th_y, th_dx, th_dy
 
-    def process(self, max_episode=1000):
+    def process(self, max_episode=10000):
         f = open("ballvelo.csv", "w")
         csvwriter = csv.writer(f)
         clear = 0.0
 
         for episode in np.arange(0, max_episode):
-            self.ball_x = np.random.randint(100, 180)
-            self.ball_y = np.random.randint(-100, 100)
-            self.ball_dx = -np.random.random() * 100
-            self.ball_dy = np.random.choice((-np.random.random(), np.random.random())) * 100
-            self.ball_states = [self.ball_x, self.ball_y, self.ball_dx, self.ball_dy]
+            ball_x = np.random.randint(100, 170)
+            ball_y = np.random.randint(-60, 60)
+            ball_dx = -np.random.random() * 100
+            ball_dy = np.random.choice((-np.random.random() / 5.0, np.random.random() / 5.0)) * 100
+            self.ball_states = [ball_x, ball_y, ball_dx, ball_dy]
+            #self.ball_states = [150, 20, -10, 0]
             self.robot_state = STAND
 
-            for step in np.arange(0, 1000000):
-                if episode == 900:
-                    csvwriter.writerow([step, self.ball_x, self.ball_y, self.ball_dx, self.ball_dy, self.robot_state])
+            for step in np.arange(0, 100000):
+                if episode == 9000:
+                    csvwriter.writerow([step + 1, self.ball_states[0], self.ball_states[1], self.ball_states[2], self.ball_states[3], self.robot_state])
                 if not self.step():
-                    if self.reward > 0:
-                        clear += 1.0
+                    if self.result > 0:
+                        clear += 1
                     break
 
         print "episode: %lf\nclear: %lf(%lf%%)" % (max_episode, clear, (clear / max_episode) * 100)
 
         f.close()
 
+class Plotcsv(Soccer):
+    def __init__(self, filename):
+        Soccer.__init__(self)
+        self.episode = np.loadtxt(filename, delimiter=",")
+        self.field = np.zeros([FIELD_HIGHT_THRESHOLD_NUM, FIELD_WIDTH_THRESHOLD_NUM])
+        self.__process()
+
+    def __process(self):
+        FIELD, BALL = range(2)
+        field = np.zeros_like(self.field)
+        for episode in self.episode:
+            time, ball_x, ball_y, ball_dx, ball_dy, robot = episode
+            x, y, dx, dy = self.threshold([ball_x, ball_y, ball_dx, ball_dx])
+            field[x, y] = BALL
+
+        plt.clf()
+        plt.imshow(field, interpolation="none")
+        plt.show()
+
 if __name__ == '__main__':
     soccer = Soccer()
     soccer.process()
 
+    Plotcsv("ballvelo.csv")
