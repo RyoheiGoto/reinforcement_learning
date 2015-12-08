@@ -13,14 +13,15 @@ field_hight_threshold = [X * threshold for X in xrange(field_hight_threshold_num
 
 ball_velo_x_threshold = [X * 100.0 for X in [-1.0, -0.8, -0.6, -0.4, -0.2, 0.0]]
 ball_velo_x_threshold_num = len(ball_velo_x_threshold) + 1
-ball_velo_y_threshold = [Y * 30.0 for Y in [-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0]]
+ball_velo_y_threshold = [Y * 50.0 for Y in [-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0]]
 ball_velo_y_threshold_num = len(ball_velo_y_threshold) + 1
 
 tau = 0.2 #sec
 fall_time = 10
 robot_states = 3
 
-epsilon = 0.3
+#epsilon = 0.1
+epsilon = 0.00001
 alpha = 0.5
 gamma = 0.5
 
@@ -43,10 +44,10 @@ class Soccer(object):
         self.process(max_episode, plot)
 
     def status_init(self):
-        ball_x = np.random.randint(100, 180)
-        ball_y = np.random.randint(-100, 100)
+        ball_x = np.random.randint(80, 180)
+        ball_y = np.random.randint(-150, 150)
         ball_dx = -np.random.random() * 100
-        ball_dy = np.random.choice([-30, 30]) * np.random.random()
+        ball_dy = np.random.choice([-50, 50]) * np.random.random()
 
         self.ball_states = (ball_x, ball_y, ball_dx, ball_dy)
         self.robot_state = STAND
@@ -212,7 +213,8 @@ class Soccer(object):
 
                     self.show_result(episode, self.result)
 
-                    if plot and episode > max_episode * 0.9:
+                    #if plot and episode > max_episode * 0.9:
+                    if plot and episode > 10000:
                         self.plotgame(log, self.result)
                     break
 
@@ -224,14 +226,18 @@ class Soccer(object):
             self.clear += 1
 
         if episode % 1000 == 0:
+            print "-" * 30
             print "episode:\t%d ~ %d" % ((episode - 999), episode)
             print "clear:\t\t%d(%.3lf%%)" % (self.clear, (self.clear / 1000 * 100))
             self.clear = 0.0
+
+            """
             global epsilon
             epsilon -= 0.01
-            if epsilon < 0.02:
-                epsilon = 0.02
+            if epsilon < 0.002:
+                epsilon = 0.002
             print "epsilon:\t%lf" % epsilon
+            """
 
     def plotgame(self, episode, result):
         field = np.zeros([field_hight_threshold_num + 1, field_width_threshold_num])
@@ -254,4 +260,4 @@ class Soccer(object):
 
 if __name__ == '__main__':
     #Soccer(max_episode=100, plot=True)
-    Soccer(max_episode=100000, plot=False)
+    Soccer(max_episode=10000000, plot=False)
