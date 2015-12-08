@@ -165,9 +165,15 @@ class Pendulum(object):
 
                     if not episode % 1000 and episode >= 1000:
                         self._print_result(episode, max_step, total_steps)
-                        Penplot(self.d, anime=True, fig=True)
+                        #Penplot(self.d, anime=True, fig=True)
                         total_steps = max_step = 0
                         states = self.d = []
+
+                        global epsilon
+                        epsilon -= 0.0005
+                        if epsilon < 0.0002:
+                            epsilon = 0.0002
+                        print "epsilon:\t%lf" % epsilon
                     else:
                         total_steps += step
                         max_step = max(max_step, step)
@@ -179,4 +185,4 @@ class Pendulum(object):
 
 if __name__ == '__main__':
     pendulum = Pendulum()
-    pendulum.process(100000)
+    pendulum.process(10000000)
