@@ -20,7 +20,7 @@ tau = 0.2 #sec
 fall_time = 10
 robot_states = 3
 
-epsilon = 0.1
+epsilon = 0.3
 alpha = 0.5
 gamma = 0.5
 
@@ -38,6 +38,7 @@ class Soccer(object):
         self.fall_count = None
         self.ball_states = None
         self.result = None
+        self.clear = None
 
         self.process(max_episode, plot)
 
@@ -195,6 +196,7 @@ class Soccer(object):
 
     def process(self, max_episode, plot):
         clear = 0.0
+        self.clear = 0.0
 
         for episode in np.arange(1, max_episode):
             self.status_init()
@@ -207,11 +209,29 @@ class Soccer(object):
                     log.append([step * tau, ball_x, ball_y, ball_dx, ball_dy, self.robot_state])
                     if self.result == COMPLETED:
                         clear += 1.0
+
+                    self.show_result(episode, self.result)
+
                     if plot and episode > max_episode * 0.9:
                         self.plotgame(log, self.result)
                     break
 
+        print "-" * 30
         print "episode:\t%d\nclear:\t\t%d(%.3lf%%)" % (max_episode, clear, (clear / max_episode) * 100)
+
+    def show_result(self, episode, result):
+        if result == COMPLETED:
+            self.clear += 1
+
+        if episode % 1000 == 0:
+            print "episode:\t%d ~ %d" % ((episode - 999), episode)
+            print "clear:\t\t%d(%.3lf%%)" % (self.clear, (self.clear / 1000 * 100))
+            self.clear = 0.0
+            global epsilon
+            epsilon -= 0.01
+            if epsilon < 0.02:
+                epsilon = 0.02
+            print "epsilon:\t%lf" % epsilon
 
     def plotgame(self, episode, result):
         field = np.zeros([field_hight_threshold_num + 1, field_width_threshold_num])
@@ -235,5 +255,5 @@ class Soccer(object):
         plt.show()
 
 if __name__ == '__main__':
-    Soccer(max_episode=100, plot=True)
-    Soccer(max_episode=10000, plot=False)
+    #Soccer(max_episode=100, plot=True)
+    Soccer(max_episode=1000000, plot=False)
