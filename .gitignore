@@ -1,7 +1,0 @@
-#Python
-*.pyc
-
-#Pycharm
-.idea/
-
-*.csv
