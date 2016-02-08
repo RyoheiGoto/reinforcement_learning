@@ -22,7 +22,7 @@ class CarPlot(object):
         ax = fig.add_subplot(1, 1, 1)
         ax.grid()
 
-        x = np.arange(-1.2, 0.6, 0.1)
+        x = np.arange(-1.2, 0.6, 0.01)
         plt.plot(x, [np.sin(3.0 * _x) for _x in x], "r--")
         
         self.time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes) 
