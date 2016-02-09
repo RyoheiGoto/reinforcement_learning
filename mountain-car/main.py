@@ -7,6 +7,8 @@ class MountainCar(object):
 
     def __init__(self):
         np.random.seed()
+        self.mem_x = []
+        self.mem_action = []
         
         #number of iterations
         self.L = 100
@@ -52,6 +54,7 @@ class MountainCar(object):
         self.x = -0.5
         self.dx = 0
         self.mem_x = [self.x]
+        self.mem_action = []
         
         self.X_num = 0
         self.reward_num = 0
@@ -147,12 +150,12 @@ class MountainCar(object):
 
     def step(self):
         action = self.decide_action(self.x, self.dx)
+        self.mem_action.append(action)
         self.x, self.dx = self.update_status(self.x, self.dx, action)
         reward = self.get_reward(self.x)
         
         self.update_matrix(self.x, self.dx, action, reward)
         
-        #print "action: %d, x: %lf, dx: %lf, reward: %lf" % (action, x, dx, reward)
         if self.x > 0.5:
             print "***clear!!***"
             return True
@@ -161,7 +164,7 @@ class MountainCar(object):
         for l in range(self.L):
             for m in range(self.M):
                 self.init_status()
-                if m % 10:
+                if not m % 5:
                     self.epsilon = 1.0
                 else:
                     self.epsilon = 0.005
@@ -176,6 +179,13 @@ class MountainCar(object):
             self.theta = np.linalg.inv(self.X.transpose().dot(self.X) + np.eye(36) * 0.0000001).dot(self.X.transpose()).dot(self.reward)
 
     def plot(self):
+        print "-" * 50
+        for i, action in enumerate(self.mem_action, 1):
+            if not i % 25:
+                print action
+            else:
+                print action,
+        print "\n" + "-" * 50
         x = np.arange(-1.2, 0.6, 0.01)
         plt.plot(x, [np.sin(3.0 * _x) for _x in x], "r--")
         plt.plot(self.mem_x, [np.sin(3.0 * _x) for _x in self.mem_x], "bo")

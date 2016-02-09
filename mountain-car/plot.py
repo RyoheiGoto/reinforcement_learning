@@ -31,10 +31,7 @@ class CarPlot(object):
         
         ani = animation.FuncAnimation(fig, self._plot, self._gen, interval=10, repeat_delay=3000, repeat=True)
         
-        try:
-            plt.show()
-        except AttributeError:
-            pass
+        plt.show()
 
 class ValuePlot(object):
     def __init__(self, theta, sigma, c):
@@ -56,9 +53,26 @@ class ValuePlot(object):
         for j, _dx in enumerate(dx):
             for i, _x in enumerate(x):
                 s = np.array([_x, _dx])
-                Z0[j][i] = sum([self.th[k] * np.exp(-(np.linalg.norm(s - self.c[k]) ** 2) / (2.0 * self.sigma ** 2)) for k in range(12)])
-                Z1[j][i] = sum([self.th[k + 12] * np.exp(-(np.linalg.norm(s - self.c[k]) ** 2) / (2.0 * self.sigma ** 2)) for k in range(12)])
-                Z2[j][i] = sum([self.th[k + 24] * np.exp(-(np.linalg.norm(s - self.c[k]) ** 2) / (2.0 * self.sigma ** 2)) for k in range(12)])
+                q0 = 0.001 * sum([self.th[k] * np.exp(-(np.linalg.norm(s - self.c[k]) ** 2) / (2.0 * self.sigma ** 2)) for k in range(12)])
+                q1 = 0.001 * sum([self.th[k + 12] * np.exp(-(np.linalg.norm(s - self.c[k]) ** 2) / (2.0 * self.sigma ** 2)) for k in range(12)])
+                q2 = 0.001 * sum([self.th[k + 24] * np.exp(-(np.linalg.norm(s - self.c[k]) ** 2) / (2.0 * self.sigma ** 2)) for k in range(12)])
+                tmp = np.exp(q0) + np.exp(q1) + np.exp(q2)
+                p0 = np.exp(q0) / tmp
+                p1 = np.exp(q1) / tmp
+                p2 = np.exp(q2) / tmp
+                policy = p0, p1, p2
+                if max(policy) is p0:
+                    Z0[j][i] = 1
+                    Z1[j][i] = 0
+                    Z2[j][i] = 0
+                if max(policy) is p1:
+                    Z0[j][i] = 0
+                    Z1[j][i] = 1
+                    Z2[j][i] = 0
+                if max(policy) is p2:
+                    Z0[j][i] = 0
+                    Z1[j][i] = 0
+                    Z2[j][i] = 1
         
         fig = plt.figure()
         
