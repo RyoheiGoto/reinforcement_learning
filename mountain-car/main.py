@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from plot import CarPlot
+from plot import CarPlot, ValuePlot
 
 class MountainCar(object):
     LEFT, NEUTRAL, RIGHT = range(3)
@@ -13,7 +13,7 @@ class MountainCar(object):
         #number of episodes
         self.M = 20
         #number of step
-        self.T = 50
+        self.T = 100
         
         #time constant
         self.tau = 0.1
@@ -143,7 +143,7 @@ class MountainCar(object):
         self.reward_num += 1
 
     def get_reward(self, x):
-        return 1.0 / (1.0 + (0.5 - x) ** 2)
+        return 1.0 / (1.0 + (0.5 - min(x, 0.5) ** 2))
 
     def step(self):
         action = self.decide_action(self.x, self.dx)
@@ -154,20 +154,25 @@ class MountainCar(object):
         
         #print "action: %d, x: %lf, dx: %lf, reward: %lf" % (action, x, dx, reward)
         if self.x > 0.5:
-            print "***clear!!***",
+            print "***clear!!***"
             return True
 
     def process(self):
         for l in range(self.L):
             for m in range(self.M):
                 self.init_status()
+                if m % 10:
+                    self.epsilon = 1.0
+                else:
+                    self.epsilon = 0.005
                 for t in range(self.T):
                     if self.step():
                         self.plot()
+                        ValuePlot(self.theta, self.sigma, self.c)
                         CarPlot(self.mem_x)
                     self.mem_x.append(self.x)
                 print "%depoch\t\t%depisode\tmax x:%lf" % (l + 1, m + 1, max(self.mem_x))
-            #self.plot()
+            self.plot()
             self.theta = np.linalg.inv(self.X.transpose().dot(self.X) + np.eye(36) * 0.0000001).dot(self.X.transpose()).dot(self.reward)
 
     def plot(self):
