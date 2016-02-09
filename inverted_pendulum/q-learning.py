@@ -54,10 +54,10 @@ class Pendulum(object):
     def _e_greedy(self, states, act=2):
         policy = []
         x, x_dot, theta, theta_dot = self._threshold(states)
-        quantity = [self.Q[action, x, x_dot, theta, theta_dot] for action in xrange(act)]
+        value = [self.Q[action, x, x_dot, theta, theta_dot] for action in xrange(act)]
 
-        for action in quantity:
-            if action == max(quantity):
+        for action in value:
+            if action == max(value):
                 policy.append(1.0 - epsilon + epsilon / act)
             else:
                 policy.append(epsilon / act)
@@ -66,6 +66,17 @@ class Pendulum(object):
             return policy
         else:
             return map(lambda n: 1.0 / act, policy)
+
+    def _softmax(self, states, t=10.0, act=2):
+        x, x_dot, theta, theta_dot = self._threshold(states)
+        value = [self.Q[action, x, x_dot, theta, theta_dot] for action in xrange(act)]
+
+        if sum(value):
+            tmp = sum([np.exp(v / t) for v in value])
+            print [np.exp(v / t) / tmp for v in value]
+            return [np.exp(v / t) / tmp for v in value]
+        else:
+            return map(lambda n: 1.0 / act, value)
 
     def _threshold(self, states):
         x, x_dot, theta, theta_dot = states
@@ -107,11 +118,13 @@ class Pendulum(object):
         return s1, s2, s3, s4
 
     def _decide_action(self, policy):
-        prob = 0.0
-        for action in xrange(len(policy)):
-            prob += policy[action]
-            if np.random.random() < prob:
+        tmp = 0.0
+        for action, prob in enumerate(policy):
+            tmp += prob
+            if np.random.random() < tmp:
                 return action
+        else:
+            return len(policy) - 1
 
     def _get_reward(self, states):
         x, x_dot, theta, theta_dot = [np.fabs(state) for state in states]
@@ -133,6 +146,7 @@ class Pendulum(object):
     def _step(self):
         states = self.s
         policy = self._e_greedy(states)
+        #policy = self._softmax(states)
         action = self._decide_action(policy)
 
         new_states = self._update_status(states, action)
@@ -165,7 +179,7 @@ class Pendulum(object):
 
                     if not episode % 1000 and episode >= 1000:
                         self._print_result(episode, max_step, total_steps)
-                        #Penplot(self.d, anime=True, fig=True)
+                        Penplot(self.d, anime=True, fig=True)
                         total_steps = max_step = 0
                         states = self.d = []
 

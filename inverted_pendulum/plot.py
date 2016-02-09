@@ -14,7 +14,7 @@ class Penplot(object):
 
     def _plot(self, data):
         x, theta, frame = data
-        self.time_text.set_text('time:%.2fs\nstep:%d' % (frame*0.02, frame))
+        self.time_text.set_text("time:%.2fs\nstep:%d" % (frame*0.02, frame))
         
         y = 0.05
         theta_x = x + math.sin(theta) * 0.25
@@ -35,16 +35,13 @@ class Penplot(object):
             ax.set_ylim(-0.1, 0.9)
             ax.grid()
             
-            self.time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes) 
-            self.car, = ax.plot([], [], 's', ms=15)
-            self.line, = ax.plot([], [], 'b-', lw=2)
+            self.time_text = ax.text(0.05, 0.9, "", transform=ax.transAxes) 
+            self.car, = ax.plot([], [], "s", ms=15)
+            self.line, = ax.plot([], [], "b-", lw=2)
             
             ani = animation.FuncAnimation(fig, self._plot, self._gen, interval=1, repeat_delay=3000, repeat=True)
 
-            try:
-                plt.show()
-            except AttributeError:
-                pass
+            plt.show()
         
         if self.fig:
             steps = xrange(len(self.x))
@@ -53,12 +50,15 @@ class Penplot(object):
             plt.title("x, theta")
             plt.plot(steps, self.x, label="x")
             plt.plot(steps, self.theta, label="theta")
-            plt.legend(loc='upper left')
+            plt.legend(loc="best")
+            plt.grid()
             
             plt.subplot(2, 1, 2)
             plt.title("x_dot, theta_dot")
             plt.plot(steps, self.x_dot, label="x_dot")
             plt.plot(steps, self.theta_dot, label="theta_dot")
-            plt.legend(loc='upper left')
+            plt.legend(loc="best")
+            plt.grid()
 
             plt.show()
+
