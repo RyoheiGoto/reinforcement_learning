@@ -28,7 +28,7 @@ class MountainCar(object):
         self.A = -0.2, 0, 0.2
         #position
         self.x = 0
-        #acceleration
+        #velocity
         self.dx = 0
         
         ###Gaussian function

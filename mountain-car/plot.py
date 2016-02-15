@@ -78,20 +78,28 @@ class ValuePlot(object):
         
         ax = fig.add_subplot(221, projection='3d')
         ax.plot_wireframe(X, DX, Z0, color="blue")
+        ax.set_xlabel("x[m]")
+        ax.set_ylabel("dx[m/sec]")
         plt.title(r"left")
         
         bx = fig.add_subplot(222, projection='3d')
         bx.plot_wireframe(X, DX, Z1, color="red")
+        bx.set_xlabel("x[m]")
+        bx.set_ylabel("dx[m/sec]")
         plt.title(r"neutral")
         
         cx = fig.add_subplot(223, projection='3d')
         cx.plot_wireframe(X, DX, Z2, color="green")
+        cx.set_xlabel("x[m]")
+        cx.set_ylabel("dx[m/sec]")
         plt.title(r"right")
         
         ex = fig.add_subplot(224, projection='3d')
         ex.plot_wireframe(X, DX, Z0, color="blue")
         ex.plot_wireframe(X, DX, Z1, color="red")
         ex.plot_wireframe(X, DX, Z2, color="green")
+        ex.set_xlabel("x[m]")
+        ex.set_ylabel("dx[m/sec]")
         
         plt.show()
 
